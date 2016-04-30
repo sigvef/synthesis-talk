@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+  <head>
+  </head>
+  <body>
+
+    <canvas id=display></canvas>
+
+    <script>
+      var audioContext = new AudioContext();
+      var scriptNode = audioContext.createScriptProcessor(1024, 1, 1);
+      scriptNode.connect(audioContext.destination);
+
+      var Hz = 44100;
+      var time = 0;
+
+      function noise(time) {
+        return Math.random() * 2 - 1;
+      }
+
+      function sin(time, frequency) {
+        return Math.sin(time / Hz * Math.PI * 2 * frequency);
+      }
+
+      function square(time, frequency) {
+        return Math.sign(sin(time, frequency));
+      }
+
+      function saw(time, frequency) {
+        return ((time / Hz * frequency) % 1) * 2 - 1;
+      }
+
+      function triangle(time, frequency) {
+        return Math.abs(((time / Hz * frequency) * 2) % 2 - 1) * 2 - 1;
+      }
+
+      function frequencyForNote(noteNumber) {
+        return Math.pow(2, (noteNumber - 69) / 12) * 440;
+      }
+
+      var keys = {
+        65: {note: 48, on: false},
+        83: {note: 50, on: false},
+        68: {note: 53, on: false},
+        70: {note: 55, on: false},
+        71: {note: 57, on: false},
+        72: {note: 60, on: false},
+        74: {note: 62, on: false},
+        75: {note: 65, on: false},
+        76: {node: 67, on: false}
+      };
+      document.addEventListener('keydown', function(e) {
+        if(e.which in keys) {
+          keys[e.which].on = true;
+        }
+      });
+      document.addEventListener('keyup', function(e) {
+        if(e.which in keys) {
+          keys[e.which].on = false;
+        }
+      });
+
+      scriptNode.onaudioprocess = function(event) {
+        var data = event.outputBuffer.getChannelData(0);
+        for (var i = 0; i < data.length; i++, time++) {
+          data[i] = 0;
+          for(var key in keys) {
+            if(keys[key].on) {
+              var frequency = frequencyForNote(keys[key].note);
+              data[i] += square(time, frequency) * 0.1;
+            }
+          }
+        }
+      }
+
+      var canvas = document.getElementById('display');
+      canvas.width = 1024;
+      canvas.height = 128;
+      var ctx = canvas.getContext('2d');
+      setInterval(function() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.save();
+        ctx.translate(0, canvas.height / 2);
+        ctx.scale(1, -1);
+        ctx.beginPath();
+        ctx.strokeStyle = 'blue';
+        ctx.moveTo(0, 0);
+        ctx.lineTo(canvas.width, 0);
+        ctx.stroke();
+        ctx.strokeStyle = 'black';
+        ctx.beginPath();
+        ctx.moveTo(0, data[0] * canvas.height / 2);
+        for(var i = 1; i < data.length; i += 1) {
+          var sample = data[i];
+          ctx.lineTo(i, sample * canvas.height / 2);
+        }
+        ctx.stroke();
+        ctx.restore();
+      }, 100);
+      
+    </script>
+  </body>
+</html>
